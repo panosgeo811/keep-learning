@@ -19,15 +19,20 @@ Include a compact **Learning Anchor** right after your code summary:
 - Explain **Why this primitive/pattern** was chosen over the naive alternative (e.g., *"Why `RWMutex` instead of `Mutex` here?"* or *"Why send via DERP relay fallback when direct UDP probe times out?"*).
 - Point out the **"Delete-This-Line Failure Mode"**: state in one sentence what breaks (race condition, deadlock, dropped packet, goroutine leak) if a critical synchronization or protocol line were removed.
 
-## 2. Central Learning Hub (`~/projects/vibe-learn/learnings/`)
-Every learning guide or interactive sandbox generated during a session MUST also be saved and indexed in the central Learning Hub:
-- Save markdown guides and HTML sandboxes under `~/projects/vibe-learn/learnings/<YYYY-MM-DD>-<slug>/`
-- Update Both Index Pages:
-  1. `~/projects/vibe-learn/learnings/INDEX.md`
-  2. `~/projects/vibe-learn/learnings/index.html`
+## 2. Portable Learning Hub (`<LEARNING_HUB_DIR>`)
+Every learning guide or interactive sandbox generated during a session MUST be saved and indexed in the user's configured Learning Hub using relative links:
+- Resolve `<LEARNING_HUB_DIR>` in priority order:
+  1. `$VIBE_LEARN_HUB` environment variable (if set)
+  2. Path stored in `~/.config/vibe-learn/hub_path` (if present)
+  3. `<repo-root>/.vibe-learn/learnings` (if a `.vibe-learn` directory exists in the workspace)
+  4. `~/.vibe-learn/learnings` (default fallback)
+- Save markdown guides and HTML sandboxes under `<LEARNING_HUB_DIR>/<YYYY-MM-DD>-<slug>/`
+- Update Both Index Pages using relative links (`./<YYYY-MM-DD>-<slug>/...`):
+  1. `<LEARNING_HUB_DIR>/INDEX.md`
+  2. `<LEARNING_HUB_DIR>/index.html`
 
 ## 3. Proactive Workflow Hooks
 At natural transition points, offer the user a 1-line next learning step:
 - **When starting an unfamiliar ticket**: Offer to run **Phase 1 (Pre-Flight Concept Brief)** with a Mermaid diagram and standalone HTML interactive protocol/concurrency widget.
-- **After writing a complex diff**: Offer to generate the **`LEARNING_GUIDE.md`** in `~/projects/vibe-learn/learnings/`.
+- **After writing a complex diff**: Offer to generate the **`LEARNING_GUIDE.md`** in `<LEARNING_HUB_DIR>`.
 - **Before committing or opening a PR**: Offer a **PR Defense Check** (2–3 pointed questions a senior reviewer would ask about the exact lines just changed).

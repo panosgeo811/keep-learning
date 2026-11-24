@@ -8,11 +8,18 @@ alwaysApply: false
 
 Use this workflow to help the developer ship their ticket quickly **and** master every protocol concept, architectural boundary, and concurrency primitive written.
 
+## Step 0: Resolve `<LEARNING_HUB_DIR>`
+Resolve `<LEARNING_HUB_DIR>` dynamically (never hardcode a user's home path):
+1. `$VIBE_LEARN_HUB` environment variable
+2. `~/.config/vibe-learn/hub_path` file contents (if present)
+3. `<repo-root>/.vibe-learn/learnings` (if `.vibe-learn/` exists in the repo)
+4. `~/.vibe-learn/learnings` (default fallback)
+
 ## Phase 1: The Pre-Flight Concept Brief (Before Coding)
 1. **60-Second Protocol / Domain Primer**: Explain *only* the slice of the protocol needed for this ticket using a Mermaid sequence or state diagram.
 2. **Codebase Mini-Map**: Identify the 2–4 key files/structs involved and explain who calls whom.
 3. **Interactive Concept Sandbox**:
-   - Generate a self-contained `.html` interactive simulator (using Tailwind CDN + vanilla JS) at `~/projects/vibe-learn/learnings/<YYYY-MM-DD>-<topic-slug>/sandbox.html` so the user can open it in their browser or IDE preview to step through the protocol and concurrency states.
+   - Generate a self-contained `.html` interactive simulator (using Tailwind CDN + vanilla JS) at `<LEARNING_HUB_DIR>/<YYYY-MM-DD>-<topic-slug>/sandbox.html` so the user can open it in their browser or IDE preview to step through the protocol and concurrency states.
 
 ## Phase 2: Glass-Box Vibe Coding (Writing the Code)
 1. Write clean, well-tested code and run tests (e.g., `go test -race ./...`).
@@ -22,15 +29,15 @@ Use this workflow to help the developer ship their ticket quickly **and** master
 
 ## Phase 3: The Deep-Dive `LEARNING_GUIDE.md` & Central Hub Index
 1. Note for Cursor users: You can run this in a **second parallel Cursor Composer/Agent tab** (acting as your background `shadow-tutor`) or inline after tests pass.
-2. Create `~/projects/vibe-learn/learnings/<YYYY-MM-DD>-<topic-slug>/LEARNING_GUIDE.md` covering:
+2. Create `<LEARNING_HUB_DIR>/<YYYY-MM-DD>-<topic-slug>/LEARNING_GUIDE.md` covering:
    - Layer 1: Protocol Mental Model + Mermaid diagrams
    - Layer 2: Codebase Call-Graph & State Transitions
    - Layer 3: Concurrency Mechanics anchored to exact line numbers
    - 3 "What-If" Mutation Experiments
    - 3 Expandable `<details><summary>` PR Defense Flashcards
-3. Append the new learning entry to both:
-   - `~/projects/vibe-learn/learnings/INDEX.md`
-   - `~/projects/vibe-learn/learnings/index.html` (inside the `LEARNINGS` array)
+3. Append the new learning entry using relative paths (`./<YYYY-MM-DD>-<topic-slug>/...`) to both:
+   - `<LEARNING_HUB_DIR>/INDEX.md`
+   - `<LEARNING_HUB_DIR>/index.html` (inside the `LEARNINGS` array)
 
 ## Phase 4: The PR Defense Check (Mock Senior Reviewer)
 Ask the developer 3 pointed code-review questions covering:
