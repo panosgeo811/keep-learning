@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-transparent text-[var(--foreground)] antialiased p-3">
+  <div class="bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-xl p-4 shadow-sm space-y-3">
+    <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
+      <div>
+        <h2 class="text-[var(--foreground)] font-semibold text-base">TELCO-402 Interactive Sandbox: MagicSock + Go Concurrency</h2>
+        <p class="text-[var(--muted-foreground)] text-xs">Step through the protocol &amp; goroutine lifecycle to compare the buggy code vs. our target fix.</p>
+      </div>
+      <div class="flex gap-1.5">
+        <button id="mode-buggy" onclick="setMode('buggy')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/40">
+          Buggy (Current)
+        </button>
+        <button id="mode-fixed" onclick="setMode('fixed')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)]">
+          Fixed (RWMutex + Broadcast + Select)
+        </button>
+      </div>
+    </div>
+
+    <!-- Visual Pipeline -->
+    <div class="grid grid-cols-3 gap-2.5 text-xs">
+      <!-- Goroutines Column -->
+      <div class="border border-[var(--border)] rounded-lg p-2.5 space-y-1.5">
+        <div class="font-semibold text-[var(--muted-foreground)] uppercase tracking-wider text-xs">1. Packet Senders (Goroutines)</div>
+        <div id="g1" class="p-1.5 rounded border border-[var(--border)] flex justify-between items-center">
+          <span>Goroutine #1 (Voice)</span>
+          <span id="g1-state" class="px-1.5 py-0.5 rounded text-xs bg-[var(--secondary)]">Idle</span>
+        </div>
+        <div id="g2" class="p-1.5 rounded border border-[var(--border)] flex justify-between items-center">
+          <span>Goroutine #2 (Data)</span>
+          <span id="g2-state" class="px-1.5 py-0.5 rounded text-xs bg-[var(--secondary)]">Idle</span>
+        </div>
+        <div id="g-udp" class="p-1.5 rounded border border-[var(--border)] flex justify-between items-center">
+          <span>UDP Socket Reader</span>
+          <span id="g-udp-state" class="px-1.5 py-0.5 rounded text-xs bg-[var(--secondary)]">Listening</span>
+        </div>
+      </div>
+
+      <!-- Synchronization & Channel State -->
+      <div class="border border-[var(--border)] rounded-lg p-2.5 space-y-1.5">
+        <div class="font-semibold text-[var(--muted-foreground)] uppercase tracking-wider text-xs">2. Go Sync State (conn.go)</div>
+        <div class="p-1.5 rounded border border-[var(--border)] flex justify-between">
+          <span>Lock:</span>
+          <code id="lock-state" class="font-mono text-xs text-amber-400">NONE (DATA RACE!)</code>
+        </div>
+        <div class="p-1.5 rounded border border-[var(--border)] flex justify-between">
+          <span>probeCh:</span>
+          <code id="chan-state" class="font-mono text-xs">unbuffered chan</code>
+        </div>
+        <div class="p-1.5 rounded border border-[var(--border)] flex justify-between">
+          <span>Timeout:</span>
+          <code id="timer-state" class="font-mono text-xs">None (Blocks ∞)</code>
+        </div>
+      </div>
+
+      <!-- Protocol Transport Path -->
+      <div class="border border-[var(--border)] rounded-lg p-2.5 space-y-1.5">
+        <div class="font-semibold text-[var(--muted-foreground)] uppercase tracking-wider text-xs">3. MagicSock Transport</div>
+        <div id="path-direct" class="p-1.5 rounded border border-[var(--border)] flex justify-between items-center">
+          <span>Direct UDP (Disco)</span>
+          <span id="direct-badge" class="px-1.5 py-0.5 rounded text-xs bg-[var(--secondary)]">Unverified</span>
+        </div>
+        <div id="path-derp" class="p-1.5 rounded border border-[var(--border)] flex justify-between items-center">
+          <span>DERP Relay (TCP)</span>
+          <span id="derp-badge" class="px-1.5 py-0.5 rounded text-xs bg-[var(--secondary)]">Standby</span>
+        </div>
+        <div class="p-1.5 rounded border border-[var(--border)] flex justify-between items-center">
+          <span>Peer PathState:</span>
+          <code id="peer-path" class="font-mono text-xs font-bold">UNKNOWN</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Explanation Banner & Controls -->
+    <div class="border border-[var(--border)] rounded-lg p-3 flex items-center justify-between gap-3">
+      <div class="space-y-0.5">
+        <div id="step-title" class="font-semibold text-sm">Step 1/4: Peer Registered (PathUnknown)</div>
+        <p id="step-desc" class="text-xs text-[var(--muted-foreground)]">Two worker goroutines are about to call Conn.Send() for node-athens-01 before direct UDP hole-punching has finished.</p>
+      </div>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button onclick="prevStep()" class="px-2.5 py-1.5 rounded-md text-xs font-medium border border-[var(--border)] bg-[var(--secondary)] text-[var(--secondary-foreground)]">← Prev</button>
+        <button onclick="nextStep()" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--primary)] text-[var(--primary-foreground)]">Next Step →</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let mode = 'buggy';
+    let step = 0;
+
+    const scenarios = {
+      buggy: [
+        {
+          title: "Step 1/4: 2 Goroutines Call Conn.Send() Concurrently",
+          desc: "Both Goroutine #1 and #2 read c.peers['node-01'] WITHOUT a lock. Since CurrentPath == UNKNOWN, both hit <-peer.probeCh and block waiting.",
+          g1: ["Blocked <-probeCh", "bg-amber-500/20 text-amber-300"],
+          g2: ["Blocked <-probeCh", "bg-amber-500/20 text-amber-300"],
+          gudp: ["Listening", "bg-[var(--secondary)]"],
+          lock: ["NONE (Unlocked Read)", "text-red-400"],
+          chan: ["2 readers queued", "text-amber-300"],
+          timer: ["None (No select{})", "text-red-400"],
+          direct: ["Probing...", "bg-amber-500/20 text-amber-300"],
+          derp: ["Never Triggered", "bg-[var(--secondary)]"],
+          path: "UNKNOWN"
+        },
+        {
+          title: "Step 2/4: Case A — Harsh NAT Blocks UDP Disco Pong",
+          desc: "BUG #3: Because <-peer.probeCh has no select{} with time.After(ProbeTimeout), both goroutines hang FOREVER! Packets never fall back to DERP Relay.",
+          g1: ["DEADLOCKED ∞", "bg-red-500/20 text-red-400"],
+          g2: ["DEADLOCKED ∞", "bg-red-500/20 text-red-400"],
+          gudp: ["Silence (NAT Block)", "bg-[var(--secondary)]"],
+          lock: ["NONE", "text-red-400"],
+          chan: ["Stuck Forever", "text-red-400"],
+          timer: ["Missing!", "text-red-400"],
+          direct: ["Blocked by NAT", "bg-red-500/20 text-red-400"],
+          derp: ["IGNORED (Bug!)", "bg-red-500/20 text-red-400"],
+          path: "UNKNOWN (Traffic Dropped)"
+        },
+        {
+          title: "Step 3/4: Case B — Disco Pong Arrives While Senders Run",
+          desc: "BUG #1: HandleDiscoPong writes peer.CurrentPath while Send() reads it -> DATA RACE CRASH! And BUG #2: peer.probeCh <- struct{}{} only wakes ONE goroutine!",
+          g1: ["Woken (1 of 2)", "bg-emerald-500/20 text-emerald-300"],
+          g2: ["STILL STUCK!", "bg-red-500/20 text-red-400"],
+          gudp: ["Writing peer fields!", "bg-red-500/20 text-red-400"],
+          lock: ["RACE CONDITION!", "text-red-400 font-bold"],
+          chan: ["1 value sent (1 stuck)", "text-red-400"],
+          timer: ["None", "text-red-400"],
+          direct: ["Pong Arrived", "bg-emerald-500/20 text-emerald-300"],
+          derp: ["Standby", "bg-[var(--secondary)]"],
+          path: "DATA RACE PANIC"
+        },
+        {
+          title: "Step 4/4: Case C — Second Disco Pong Arrives Later",
+          desc: "BUG #2 Encore: When another Disco Pong arrives and nobody is waiting on <-peer.probeCh, HandleDiscoPong() blocks forever on peer.probeCh <- struct{}{}!",
+          g1: ["Done", "bg-[var(--secondary)]"],
+          g2: ["STILL STUCK!", "bg-red-500/20 text-red-400"],
+          gudp: ["DEADLOCKED on send!", "bg-red-500/20 text-red-400"],
+          lock: ["Unlocked", "text-red-400"],
+          chan: ["Unbuffered Send Blocks!", "text-red-400"],
+          timer: ["None", "text-red-400"],
+          direct: ["Reader Deadlocked", "bg-red-500/20 text-red-400"],
+          derp: ["Standby", "bg-[var(--secondary)]"],
+          path: "UDP LOOP FROZEN"
+        }
+      ],
+      fixed: [
+        {
+          title: "Step 1/4: Safe Snapshot with sync.RWMutex",
+          desc: "Goroutines #1 & #2 acquire mu.RLock(), grab the shared probeCh reference while CurrentPath == UNKNOWN, and immediately RUnlock() before waiting.",
+          g1: ["Waiting in select{}", "bg-sky-500/20 text-sky-300"],
+          g2: ["Waiting in select{}", "bg-sky-500/20 text-sky-300"],
+          gudp: ["Listening", "bg-[var(--secondary)]"],
+          lock: ["mu.RLock() -> RUnlock()", "text-emerald-400"],
+          chan: ["open (broadcast ready)", "text-sky-300"],
+          timer: ["time.NewTimer(40ms)", "text-emerald-400"],
+          direct: ["Probing UDP...", "bg-amber-500/20 text-amber-300"],
+          derp: ["Ready for Fallback", "bg-sky-500/20 text-sky-300"],
+          path: "UNKNOWN"
+        },
+        {
+          title: "Step 2/4: Case A — UDP Probe Times Out (40ms) -> DERP Fallback!",
+          desc: "select{} hits case <-timer.C! Both goroutines cleanly fall back to PathDERP (encrypted TCP relay) so voice/data packets never hang.",
+          g1: ["Sent via DERP!", "bg-emerald-500/20 text-emerald-300"],
+          g2: ["Sent via DERP!", "bg-emerald-500/20 text-emerald-300"],
+          gudp: ["Still probing bg", "bg-[var(--secondary)]"],
+          lock: ["mu.Lock() sets DERP", "text-emerald-400"],
+          chan: ["Still open for Pong", "text-sky-300"],
+          timer: ["Fired at 40ms!", "text-amber-300"],
+          direct: ["Timed Out", "bg-[var(--secondary)]"],
+          derp: ["ACTIVE (Carrying Traffic)", "bg-emerald-500/20 text-emerald-300"],
+          path: "DERP_RELAY"
+        },
+        {
+          title: "Step 3/4: Case B — Disco Pong Arrives -> close(probeCh) Broadcast!",
+          desc: "HandleDiscoPong acquires mu.Lock(), sets PathDirectUDP, and calls close(peer.probeCh). In Go, closing a channel wakes ALL waiting goroutines simultaneously!",
+          g1: ["Woken! Sent Direct UDP", "bg-emerald-500/20 text-emerald-300"],
+          g2: ["Woken! Sent Direct UDP", "bg-emerald-500/20 text-emerald-300"],
+          gudp: ["close(probeCh) Once", "bg-emerald-500/20 text-emerald-300"],
+          lock: ["mu.Lock() exclusive", "text-emerald-400"],
+          chan: ["CLOSED (Broadcasts to all!)", "text-emerald-400 font-bold"],
+          timer: ["Stopped cleanly", "text-emerald-400"],
+          direct: ["UPGRADED (Low Latency)", "bg-emerald-500/20 text-emerald-300"],
+          derp: ["Standby", "bg-[var(--secondary)]"],
+          path: "DIRECT_UDP"
+        },
+        {
+          title: "Step 4/4: Duplicate Disco Pongs & Fast-Path Senders",
+          desc: "A peer.probeClosed boolean guard prevents double-closing probeCh on repeat pongs, and new Send() calls take the RLock fast-path straight to Direct UDP!",
+          g1: ["Fast-path Direct UDP", "bg-emerald-500/20 text-emerald-300"],
+          g2: ["Fast-path Direct UDP", "bg-emerald-500/20 text-emerald-300"],
+          gudp: ["Idempotent update", "bg-emerald-500/20 text-emerald-300"],
+          lock: ["Fast RLock()", "text-emerald-400"],
+          chan: ["Closed (No-op on repeat)", "text-emerald-400"],
+          timer: ["Bypassed (Fast Path)", "text-emerald-400"],
+          direct: ["ACTIVE (198.51.100.42)", "bg-emerald-500/20 text-emerald-300"],
+          derp: ["Standby", "bg-[var(--secondary)]"],
+          path: "DIRECT_UDP"
+        }
+      ]
+    };
+
+    function render() {
+      const s = scenarios[mode][step];
+      document.getElementById('step-title').textContent = s.title;
+      document.getElementById('step-desc').textContent = s.desc;
+
+      const setBadge = (id, pair) => {
+        const el = document.getElementById(id);
+        el.textContent = pair[0];
+        el.className = "px-1.5 py-0.5 rounded text-xs " + pair[1];
+      };
+      setBadge('g1-state', s.g1);
+      setBadge('g2-state', s.g2);
+      setBadge('g-udp-state', s.gudp);
+      setBadge('direct-badge', s.direct);
+      setBadge('derp-badge', s.derp);
+
+      const setCode = (id, pair) => {
+        const el = document.getElementById(id);
+        el.textContent = pair[0];
+        el.className = "font-mono text-xs " + pair[1];
+      };
+      setCode('lock-state', s.lock);
+      setCode('chan-state', s.chan);
+      setCode('timer-state', s.timer);
+
+      document.getElementById('peer-path').textContent = s.path;
+
+      const btnBuggy = document.getElementById('mode-buggy');
+      const btnFixed = document.getElementById('mode-fixed');
+      if (mode === 'buggy') {
+        btnBuggy.className = "px-2.5 py-1 rounded-md text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/40";
+        btnFixed.className = "px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)]";
+      } else {
+        btnBuggy.className = "px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)]";
+        btnFixed.className = "px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+      }
+    }
+
+    function setMode(m) {
+      mode = m;
+      step = 0;
+      render();
+    }
+    function nextStep() {
+      step = (step + 1) % 4;
+      render();
+    }
+    function prevStep() {
+      step = (step + 3) % 4;
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

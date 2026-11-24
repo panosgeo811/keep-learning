@@ -1,0 +1,40 @@
+---
+description: Activate when the user wants to learn along while solving a ticket, requests a pre-flight protocol/codebase brief, asks for an interactive concurrency or protocol visualizer, wants a LEARNING_GUIDE.md, or asks for a PR Defense Check.
+globs: 
+alwaysApply: false
+---
+
+# Vibe-Learn 4-Phase Workflow (Cursor & Cross-Agent Edition)
+
+Use this workflow to help the developer ship their ticket quickly **and** master every protocol concept, architectural boundary, and concurrency primitive written.
+
+## Phase 1: The Pre-Flight Concept Brief (Before Coding)
+1. **60-Second Protocol / Domain Primer**: Explain *only* the slice of the protocol needed for this ticket using a Mermaid sequence or state diagram.
+2. **Codebase Mini-Map**: Identify the 2–4 key files/structs involved and explain who calls whom.
+3. **Interactive Concept Sandbox**:
+   - Generate a self-contained `.html` interactive simulator (using Tailwind CDN + vanilla JS) at `~/projects/vibe-learn/learnings/<YYYY-MM-DD>-<topic-slug>/sandbox.html` so the user can open it in their browser or IDE preview to step through the protocol and concurrency states.
+
+## Phase 2: Glass-Box Vibe Coding (Writing the Code)
+1. Write clean, well-tested code and run tests (e.g., `go test -race ./...`).
+2. Include a **Learning Anchor** summary in chat:
+   - **Why this concurrency pattern?**
+   - **The "Delete-This-Line" Bomb**: Explicitly name one line in the diff and explain what race condition, deadlock, or protocol bug happens if a developer deletes it.
+
+## Phase 3: The Deep-Dive `LEARNING_GUIDE.md` & Central Hub Index
+1. Note for Cursor users: You can run this in a **second parallel Cursor Composer/Agent tab** (acting as your background `shadow-tutor`) or inline after tests pass.
+2. Create `~/projects/vibe-learn/learnings/<YYYY-MM-DD>-<topic-slug>/LEARNING_GUIDE.md` covering:
+   - Layer 1: Protocol Mental Model + Mermaid diagrams
+   - Layer 2: Codebase Call-Graph & State Transitions
+   - Layer 3: Concurrency Mechanics anchored to exact line numbers
+   - 3 "What-If" Mutation Experiments
+   - 3 Expandable `<details><summary>` PR Defense Flashcards
+3. Append the new learning entry to both:
+   - `~/projects/vibe-learn/learnings/INDEX.md`
+   - `~/projects/vibe-learn/learnings/index.html` (inside the `LEARNINGS` array)
+
+## Phase 4: The PR Defense Check (Mock Senior Reviewer)
+Ask the developer 3 pointed code-review questions covering:
+1. Protocol edge cases
+2. Lock ordering / concurrency under load
+3. State transition races
+Wait for their response, grade their answers, and give them a PR Defense Cheat Sheet.

@@ -1,0 +1,12 @@
+{
+  "name": "vibe-learn",
+  "displayName": "Vibe Learn",
+  "version": "1.0.0",
+  "description": "Turn vibe coding into guided mastery: learn protocols, codebase architecture, and concurrency concepts directly from the code being written, with interactive visualizers, a background Shadow Tutor subagent, and PR Defense checks.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Run a Vibe-Learn pre-flight brief on this ticket and codebase",
+    "Spawn the shadow-tutor to build an interactive learning guide for our changes",
+    "Quiz me with a PR Defense Check on the concurrency and protocol logic we just wrote"
+  ]
+}

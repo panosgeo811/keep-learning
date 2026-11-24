@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vibe-Learn Hub — Personal Engineering Mastery Catalog</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased min-h-screen p-6">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <!-- Header -->
+    <header class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2.5">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">Vibe-Learn Hub</span>
+          <span class="text-xs text-slate-400 font-mono">~/projects/vibe-learn/learnings/</span>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Engineering Learnings &amp; Protocol Sandboxes</h1>
+        <p class="text-sm text-slate-400">Every protocol, codebase call-graph, and concurrency primitive learned while vibe coding—indexed in one place.</p>
+      </div>
+      <div class="flex gap-3 text-center shrink-0">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5">
+          <div id="stat-total" class="text-xl font-bold text-sky-400">1</div>
+          <div class="text-xs text-slate-400">Tickets Mastered</div>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5">
+          <div id="stat-concepts" class="text-xl font-bold text-purple-400">6</div>
+          <div class="text-xs text-slate-400">Core Concepts</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Search & Filter Bar -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <input
+        id="search-input"
+        type="text"
+        oninput="renderCards()"
+        placeholder="Search by ticket, protocol (WireGuard, DERP, Disco), or concurrency concept (RWMutex, channel, select)..."
+        class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+      />
+      <div class="flex gap-1.5 shrink-0" id="tag-filters">
+        <button onclick="setFilter('all')" id="filter-all" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-500 text-slate-950">All</button>
+        <button onclick="setFilter('Protocol')" id="filter-Protocol" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Protocols</button>
+        <button onclick="setFilter('Concurrency')" id="filter-Concurrency" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Concurrency</button>
+        <button onclick="setFilter('Go')" id="filter-Go" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Go</button>
+      </div>
+    </div>
+
+    <!-- Learning Cards Container -->
+    <div id="cards-container" class="space-y-4"></div>
+  </div>
+
+  <script>
+    // LEARNINGS CATALOG: The vibe-learn skill & shadow-tutor append new entries here automatically.
+    const LEARNINGS = [
+      {
+        id: "2026-11-24-telco-402-magicsock",
+        date: "2026-11-24",
+        ticket: "TELCO-402",
+        title: "Tailscale MagicSock NAT Traversal (Disco Direct-UDP to DERP Relay Fallback) & Go Concurrency",
+        categoryTags: ["Protocol", "Concurrency", "Go"],
+        concepts: [
+          "MagicSock Multiplexer",
+          "Disco UDP Hole-Punching",
+          "DERP Encrypted TCP Fallback",
+          "sync.RWMutex Fast-Path",
+          "close(chan) 1-to-N Broadcast",
+          "select + time.NewTimer"
+        ],
+        summary: "Solved concurrent map read/write crashes and infinite packet hangs when Symmetric NATs block UDP probes. Used sync.RWMutex for parallel fast-path reads, close(peer.probeCh) to broadcast Disco Pong wakeups to all waiting senders, and a bounded select{} timer to fall back to DERP Relay.",
+        deleteLineBomb: "If you hold c.mu.RLock() across the blocking select{} wait (or use defer c.mu.RUnlock() at the top of Send()), HandleDiscoPong() deadlocks waiting for c.mu.Lock() and can never close probeCh.",
+        guidePath: "./2026-11-24-telco-402-magicsock/LEARNING_GUIDE.md",
+        sandboxPath: "./2026-11-24-telco-402-magicsock/sandbox.html",
+        codePath: "../examples/telco-magicsock/conn.go"
+      }
+    ];
+
+    let activeFilter = 'all';
+
+    function setFilter(f) {
+      activeFilter = f;
+      ['all', 'Protocol', 'Concurrency', 'Go'].forEach(tag => {
+        const btn = document.getElementById('filter-' + tag);
+        if (!btn) return;
+        if (tag === f) {
+          btn.className = "px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-500 text-slate-950";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700";
+        }
+      });
+      renderCards();
+    }
+
+    function renderCards() {
+      const q = (document.getElementById('search-input').value || '').toLowerCase();
+      const container = document.getElementById('cards-container');
+      container.innerHTML = '';
+
+      const filtered = LEARNINGS.filter(item => {
+        const matchesFilter = activeFilter === 'all' || item.categoryTags.includes(activeFilter);
+        const hay = (item.title + ' ' + item.ticket + ' ' + item.summary + ' ' + item.concepts.join(' ')).toLowerCase();
+        return matchesFilter && hay.includes(q);
+      });
+
+      document.getElementById('stat-total').textContent = LEARNINGS.length;
+      const totalConcepts = LEARNINGS.reduce((acc, item) => acc + item.concepts.length, 0);
+      document.getElementById('stat-concepts').textContent = totalConcepts;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-400 text-sm">
+            No learning entries match your filter.
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const badges = item.concepts.map(c =>
+          `<span class="px-2 py-0.5 rounded-md text-xs font-medium bg-slate-800 text-sky-300 border border-slate-700">${c}</span>`
+        ).join('');
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md space-y-4";
+        card.innerHTML = `
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">${item.ticket}</span>
+              <span class="text-xs text-slate-400 font-mono">${item.date}</span>
+              <h2 class="text-lg font-semibold text-white">${item.title}</h2>
+            </div>
+          </div>
+
+          <p class="text-sm text-slate-300 leading-relaxed">${item.summary}</p>
+
+          <div class="bg-red-950/30 border border-red-500/30 rounded-xl p-3.5 text-xs text-red-200">
+            <strong class="text-red-400 uppercase tracking-wider">Delete-This-Line Failure Mode:</strong>
+            <span class="ml-1">${item.deleteLineBomb}</span>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5">
+            ${badges}
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800">
+            <a href="${item.guidePath}" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-sky-500 text-slate-950 hover:bg-sky-400 transition">
+              Read Full Learning Guide (LEARNING_GUIDE.md) →
+            </a>
+            <a href="${item.sandboxPath}" target="_blank" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30 transition">
+              Open Interactive Protocol &amp; Concurrency Sandbox
+            </a>
+            <a href="${item.codePath}" class="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+              View Annotated Source Code (conn.go)
+            </a>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    renderCards();
+  </script>
+</body>
+</html>
