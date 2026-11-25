@@ -17,7 +17,7 @@ Use this skill to help a developer ship their ticket quickly **and** deeply unde
 ---
 
 ## Step 0: Resolve & Initialize the Portable `<LEARNING_HUB_DIR>`
-Never hardcode a machine-specific path. Run the helper script [resolve-hub.sh](./scripts/resolve-hub.sh) (or resolve manually) to locate and auto-bootstrap the user's Learning Hub:
+Never hardcode a machine-specific path. Run the helper script [resolve-hub.sh](./scripts/resolve-hub.sh) from this skill's own directory, not the user's workspace (in Claude Code: `bash "${CLAUDE_SKILL_DIR}/scripts/resolve-hub.sh"`), or resolve manually, to locate and auto-bootstrap the user's Learning Hub:
 1. `$VIBE_LEARN_HUB` (if set in environment)
 2. `~/.config/vibe-learn/hub_path` (written by `install.sh` when the user or teammate installs `vibe-learn`)
 3. `<workspace-root>/.vibe-learn/learnings` (when a team shares learnings inside a project repo)
@@ -34,11 +34,12 @@ You can execute all 4 phases end-to-end when tackling a ticket, or jump directly
 ### Phase 1: The Pre-Flight Concept Brief (Before Coding)
 Before writing the fix, orient the developer in under 90 seconds of reading:
 1. **60-Second Protocol / Domain Primer**: Explain *only* the slice of the protocol (e.g., WireGuard/Tailscale NAT traversal, STUN/DERP fallback, keepalives) needed for this ticket. Use a Mermaid sequence or state diagram.
-2. **Codebase Mini-Map**: Identify the 2–4 key files/structs involved with clickable `file://` links and explain who calls whom.
+2. **Codebase Mini-Map**: Identify the 2–4 key files/structs involved with clickable file links (`file://` in Antigravity, relative `path:line` links in Claude Code) and explain who calls whom.
 3. **Interactive Concept Sandbox (Generative UI)**:
-   - Read the `generative_ui` skill if available in your environment.
-   - Build a compact (<480px tall) interactive HTML widget in the artifact directory and embed it inline with `<agent-embed src="file:///<artifact_path>/<widget>.html"></agent-embed>`.
-   - Also save a copy to `<LEARNING_HUB_DIR>/<YYYY-MM-DD>-<topic-slug>/sandbox.html` so it lives permanently in the user's Learning Hub.
+   - Build a compact (<480px tall), self-contained interactive HTML widget (vanilla JS, no build step).
+   - **Antigravity**: read the `generative_ui` skill if available, save the widget in the artifact directory, and embed it inline with `<agent-embed src="file:///<artifact_path>/<widget>.html"></agent-embed>`.
+   - **Claude Code / other agents**: there is no inline embed; save the widget file and give the user a clickable link to open it in a browser.
+   - In every environment, also save a copy to `<LEARNING_HUB_DIR>/<YYYY-MM-DD>-<topic-slug>/sandbox.html` so it lives permanently in the user's Learning Hub.
 
 ---
 
@@ -54,14 +55,14 @@ When implementing the ticket:
 
 ### Phase 3: The Background `shadow-tutor` Subagent & Learning Hub Update
 To keep the main coding conversation fast while building a permanent library of lessons:
-1. Invoke `shadow-tutor` via `invoke_subagent` in the background (or generate directly if the subagent is read-only) to produce a comprehensive `LEARNING_GUIDE.md` containing:
+1. Invoke the `shadow-tutor` subagent in the background with your environment's subagent tool (Antigravity: `invoke_subagent`; Claude Code: the `Agent` tool with `run_in_background`), or generate directly if no subagent tool is available, to produce a comprehensive `LEARNING_GUIDE.md` containing:
    - Layer 1: Protocol / Domain Mental Model
    - Layer 2: Codebase Call-Graph & State Transitions
    - Layer 3: Concurrency & Systems Mechanics anchored to exact code lines
    - 3 "What-If" mutation experiments
    - 3 Expandable `<details><summary>` PR review flashcards
 2. **Persist & Index in `<LEARNING_HUB_DIR>` Using Relative Links**:
-   - Save the guide to `<LEARNING_HUB_DIR>/<YYYY-MM-DD>-<topic-slug>/LEARNING_GUIDE.md` (as well as the conversation artifact directory).
+   - Save the guide to `<LEARNING_HUB_DIR>/<YYYY-MM-DD>-<topic-slug>/LEARNING_GUIDE.md` (and, in Antigravity, also to the conversation artifact directory).
    - Register the new entry using **relative paths** (`./<YYYY-MM-DD>-<topic-slug>/LEARNING_GUIDE.md` and `./<YYYY-MM-DD>-<topic-slug>/sandbox.html`) in both:
      - `<LEARNING_HUB_DIR>/INDEX.md`
      - `<LEARNING_HUB_DIR>/index.html` (add the new entry to the `LEARNINGS` JavaScript array so it immediately appears in the searchable browser dashboard).
@@ -70,7 +71,7 @@ To keep the main coding conversation fast while building a permanent library of 
 
 ### Phase 4: The PR Defense Check (Mock Senior Reviewer)
 Once the code passes tests, switch into **Supportive Senior Reviewer Mode**:
-1. Use `ask_question` (or ask 2–3 targeted questions in chat) simulating a real PR review on the exact lines just written:
+1. Use your environment's question tool (Antigravity: `ask_question`; Claude Code: `AskUserQuestion`), or ask 2–3 targeted questions in chat, simulating a real PR review on the exact lines just written:
    - **Question 1 (Protocol Layer)**: Why the protocol behaves a specific way in an edge case.
    - **Question 2 (Concurrency Layer)**: What happens under concurrent load or different lock ordering.
    - **Question 3 (State / Architecture Layer)**: How state transitions or callers react under race conditions.
