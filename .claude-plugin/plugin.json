@@ -1,0 +1,10 @@
+{
+  "name": "vibe-learn",
+  "displayName": "Vibe Learn",
+  "version": "1.0.0",
+  "description": "Turn vibe coding into guided mastery: learn protocols, codebase architecture, and concurrency concepts directly from the code being written, with interactive visualizers, a background Shadow Tutor subagent, and PR Defense checks.",
+  "author": {
+    "name": "zabatistas"
+  },
+  "keywords": ["learning", "mentoring", "concurrency", "protocols", "code-review"]
+}

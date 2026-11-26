@@ -1,6 +1,6 @@
 # Vibe-Learn: Portable Learning-While-Vibe-Coding Kit
 
-Turn vibe coding into guided engineering mastery across **Antigravity** and **Cursor**.
+Turn vibe coding into guided engineering mastery across **Antigravity**, **Claude Code** and **Cursor**.
 Designed for engineers tackling tickets involving unfamiliar network/domain protocols, unfamiliar codebase architecture, or tricky concurrency primitives.
 
 ---
@@ -16,9 +16,25 @@ cd vibe-learn
 # Install Antigravity plugin + initialize your personal Learning Hub:
 ./install.sh
 
+# Also install the Claude Code plugin (needs the `claude` CLI on PATH):
+./install.sh --claude-code
+
 # Or choose a custom Learning Hub directory & install rules into a Cursor repo:
 ./install.sh --hub-dir ~/my-learnings --cursor-repo ~/projects/my-service
 ```
+
+### Claude Code
+
+This repo is also a Claude Code plugin marketplace (`.claude-plugin/marketplace.json`). Without the installer, inside Claude Code run:
+
+```
+/plugin marketplace add <path-or-github-repo-of-this-clone>
+/plugin install vibe-learn@keep-learning
+```
+
+To try it without installing: `claude --plugin-dir /path/to/this/clone`.
+
+Claude Code plugins have no `rules/` directory, so a `SessionStart` hook (`hooks/hooks.json`) loads `rules/AGENTS.md` into context at the start of every session.
 
 ---
 
@@ -44,5 +60,6 @@ Because all links inside `learnings/` are relative, you can move the directory, 
 - **`rules/AGENTS.md`**: Always-On Glass-Box Coding rule (adds concise 2–4 bullet **Learning Anchors** and **"Delete-This-Line" failure modes** whenever protocol or concurrency code is written).
 - **`skills/vibe-learn/`**: The 4-Phase workflow (Pre-Flight Brief + Interactive HTML Sandbox -> Glass-Box Coding -> Background `shadow-tutor` -> PR Defense Check) plus `scripts/resolve-hub.sh` and `resources/dashboard-template.html`.
 - **`agents/shadow-tutor.md`**: Background technical mentor subagent that builds line-linked `LEARNING_GUIDE.md` guides and flashcards from your `git diff`.
+- **`.claude-plugin/`** + **`hooks/hooks.json`**: Claude Code plugin manifest, local marketplace, and the `SessionStart` hook that loads the always-on rule.
 - **`.cursor/rules/*.mdc`**: Drop-in Cursor IDE rules (`vibe-mentor.mdc` and `vibe-learn-workflow.mdc`).
 - **`examples/telco-magicsock/`**: Reference Go implementation & concurrency test suite for Ticket `TELCO-402` (Tailscale MagicSock Direct-UDP to DERP Relay fallback).

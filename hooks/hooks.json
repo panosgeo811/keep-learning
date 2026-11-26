@@ -1,0 +1,15 @@
+{
+  "description": "Claude Code: load the always-on Vibe-Mentor rule (rules/AGENTS.md) into context at session start, since Claude Code plugins have no rules/ directory.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/rules/AGENTS.md\""
+          }
+        ]
+      }
+    ]
+  }
+}

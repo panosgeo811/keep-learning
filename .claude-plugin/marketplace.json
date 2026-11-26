@@ -1,0 +1,13 @@
+{
+  "name": "keep-learning",
+  "owner": {
+    "name": "zabatistas"
+  },
+  "plugins": [
+    {
+      "name": "vibe-learn",
+      "source": "./",
+      "description": "Learning-while-vibe-coding kit: Learning Anchors, pre-flight briefs, a background shadow-tutor subagent, and PR Defense checks."
+    }
+  ]
+}
